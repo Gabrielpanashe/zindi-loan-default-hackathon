@@ -1,0 +1,51 @@
+# Raw data — never in image (large, gitignored)
+data/raw/
+
+# Generated outputs — not needed at runtime
+submissions/
+catboost_info/
+notebooks/
+heckathon_information/
+docs/
+
+# Local dev env
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Git
+.git/
+.gitignore
+
+# Node (frontend has its own .dockerignore, but belt-and-suspenders)
+risk_platform/frontend/node_modules/
+risk_platform/frontend/dist/
+
+# Local dev SQLite database — Docker uses its own volume
+risk_platform/backend/data/
+
+# Local .env overrides — Docker uses compose environment block
+risk_platform/backend/.env
+
+# Logs and temp files
+*.log
+api_server.log
+frontend.log
+test_batch.csv
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# NOTE: data/processed/ is intentionally NOT excluded — it contains
+# the fitted encoder pickles needed by the inference engine at runtime.

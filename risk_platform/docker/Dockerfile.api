@@ -13,6 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt -r risk_platform/requirements
 COPY src /app/src
 COPY risk_platform /app/risk_platform
 COPY scripts /app/scripts
+# Fitted encoder pickles — required by InferenceEngine at runtime
+COPY data/processed /app/data/processed
 
 ENV PYTHONPATH=/app
 WORKDIR /app/risk_platform/backend

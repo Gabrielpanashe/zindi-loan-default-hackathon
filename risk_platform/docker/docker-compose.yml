@@ -23,18 +23,26 @@ services:
       JWT_SECRET: change-me-in-docker
       CORS_ORIGINS: http://localhost:5173,http://localhost:3000,http://frontend:80
       ARTIFACTS_DIR: /app/risk_platform/artifacts/v1
+      PYTHONPATH: /app:/app/risk_platform/backend
+      CELERY_TASK_ALWAYS_EAGER: "false"
     volumes:
       - ../../risk_platform/artifacts:/app/risk_platform/artifacts:ro
       - api_data:/app/risk_platform/backend/data
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   worker:
     build:
       context: ../..
       dockerfile: risk_platform/docker/Dockerfile.api
-    command: celery -A app.celery_app worker --loglevel=info
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=2
     working_dir: /app/risk_platform/backend
     environment:
       DATABASE_URL: sqlite:////app/risk_platform/backend/data/platform.db
@@ -43,12 +51,15 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       ARTIFACTS_DIR: /app/risk_platform/artifacts/v1
       PYTHONPATH: /app:/app/risk_platform/backend
+      CELERY_TASK_ALWAYS_EAGER: "false"
     volumes:
       - ../../risk_platform/artifacts:/app/risk_platform/artifacts:ro
       - api_data:/app/risk_platform/backend/data
     depends_on:
-      - api
-      - redis
+      api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   frontend:
     build:
@@ -57,7 +68,8 @@ services:
     ports:
       - "5173:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   api_data:
