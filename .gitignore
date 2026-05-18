@@ -30,6 +30,16 @@ Thumbs.db
 # Optuna study databases
 *.db
 
+# Frontend
+risk_platform/frontend/node_modules/
+
+# Temp/log files
+*.log
+api_server.log
+frontend.log
+test_batch.csv
+catboost_info/
+
 # Keep submissions tracked (small CSVs)
 !submissions/*.csv
 !submissions/.gitkeep
