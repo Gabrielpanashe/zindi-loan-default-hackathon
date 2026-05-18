@@ -25,11 +25,25 @@ from app.services.scoring import ensure_default_policy, ensure_model_version_row
 router = APIRouter(prefix="/applications", tags=["applications"])
 
 
+@router.get("/my", response_model=list[LoanApplicationOut])
+def my_applications(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> list[LoanApplication]:
+    return (
+        db.query(LoanApplication)
+        .filter(LoanApplication.creator_id == user.id)
+        .order_by(desc(LoanApplication.created_at))
+        .limit(20)
+        .all()
+    )
+
+
 @router.post("/friendly", response_model=LoanApplicationOut)
 def create_friendly_application(
     body: FriendlyApplicationCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_roles("admin", "loan_officer")),
+    user: User = Depends(require_roles("admin", "loan_officer", "applicant")),
 ) -> LoanApplication:
     raw_payload = build_raw_payload(body.model_dump())
     row = LoanApplication(
@@ -49,7 +63,7 @@ def create_friendly_application(
 def create_and_score_friendly(
     body: FriendlyApplicationCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_roles("admin", "loan_officer")),
+    user: User = Depends(require_roles("admin", "loan_officer", "applicant")),
 ) -> ScoreOut:
     raw_payload = build_raw_payload(body.model_dump())
     row = LoanApplication(

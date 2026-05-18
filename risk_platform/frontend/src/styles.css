@@ -1,3 +1,18 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0f1419;
+  --color-surface: #1a2332;
+  --color-surface2: #243044;
+  --color-text: #e8eef4;
+  --color-muted: #8b9cb3;
+  --color-accent: #3b82f6;
+  --color-accent2: #10b981;
+  --color-warn: #f59e0b;
+  --color-danger: #ef4444;
+  --font-family-sans: "DM Sans", system-ui, sans-serif;
+}
+
 :root {
   --bg: #0f1419;
   --surface: #1a2332;

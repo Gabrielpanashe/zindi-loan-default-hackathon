@@ -29,4 +29,10 @@ def seed_if_empty(db: Session, settings: Settings) -> None:
         role="risk_analyst",
     )
     db.add(analyst)
+    applicant = User(
+        email="applicant@localhost",
+        hashed_password=get_password_hash("applicant123"),
+        role="applicant",
+    )
+    db.add(applicant)
     db.commit()
