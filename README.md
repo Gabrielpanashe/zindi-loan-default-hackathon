@@ -11,9 +11,17 @@
 
 ## Setup
 
+Use a **virtual environment** for all installs (see also [risk_platform/README.md](risk_platform/README.md)):
+
 ```bash
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -U pip
 pip install -r requirements.txt
+pip install -r risk_platform/requirements-api.txt
 ```
+
+For research-only work you can omit `risk_platform/requirements-api.txt`.
 
 > **Data:** Raw CSV files are NOT in git. Get them from the shared Google Drive folder and place them in `data/raw/`.
 
@@ -36,6 +44,7 @@ zindi_loan_default_heckathon/
 │   ├── 06_tuning_ensemble.ipynb
 │   └── 07_final_submission.ipynb
 ├── src/                  ← Reusable Python modules (all shared logic lives here)
+├── risk_platform/        ← Loan Risk Intelligence API + ML runtime (see risk_platform/README.md)
 ├── submissions/          ← Submission CSVs tracked in git
 ├── models/               ← Saved model artifacts (gitignored)
 ├── reports/figures/      ← EDA plots

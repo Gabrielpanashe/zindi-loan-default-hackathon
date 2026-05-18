@@ -1,0 +1,63 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: ../..
+      dockerfile: risk_platform/docker/Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: sqlite:////app/risk_platform/backend/data/platform.db
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      JWT_SECRET: change-me-in-docker
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000,http://frontend:80
+      ARTIFACTS_DIR: /app/risk_platform/artifacts/v1
+    volumes:
+      - ../../risk_platform/artifacts:/app/risk_platform/artifacts:ro
+      - api_data:/app/risk_platform/backend/data
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: risk_platform/docker/Dockerfile.api
+    command: celery -A app.celery_app worker --loglevel=info
+    working_dir: /app/risk_platform/backend
+    environment:
+      DATABASE_URL: sqlite:////app/risk_platform/backend/data/platform.db
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      ARTIFACTS_DIR: /app/risk_platform/artifacts/v1
+      PYTHONPATH: /app:/app/risk_platform/backend
+    volumes:
+      - ../../risk_platform/artifacts:/app/risk_platform/artifacts:ro
+      - api_data:/app/risk_platform/backend/data
+    depends_on:
+      - api
+      - redis
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+volumes:
+  api_data:
