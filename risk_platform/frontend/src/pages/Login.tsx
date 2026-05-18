@@ -51,8 +51,16 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-[#0f1419] flex">
-      {/* LEFT BRAND PANEL */}
-      <div className="hidden lg:flex flex-col justify-between w-1/2 bg-gradient-to-br from-[#1a2332] to-[#0d1520] p-12 border-r border-[#243044]">
+      {/* LEFT BRAND PANEL — analyst dashboard image background */}
+      <div className="hidden lg:flex flex-col justify-between w-1/2 relative overflow-hidden border-r border-[#243044]">
+        {/* background image */}
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('/images/analyst-dashboard.jpg')" }}
+        />
+        {/* dark overlay so text stays readable */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0d1520]/93 via-[#0d1520]/85 to-[#0d1520]/70" />
+      <div className="relative flex flex-col justify-between h-full p-12">
         <div>
           <div className="flex items-center gap-2 mb-12">
             <div className="w-9 h-9 bg-gradient-to-br from-[#3b82f6] to-[#10b981] rounded-xl flex items-center justify-center">
@@ -88,6 +96,7 @@ export default function Login() {
           </div>
         </div>
         <p className="text-xs text-[#8b9cb3]">IndabaX Zimbabwe 2026 · AI for Financial Inclusion</p>
+      </div>
       </div>
 
       {/* RIGHT LOGIN PANEL */}
