@@ -3,8 +3,8 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_BACKEND_ROOT = Path(__file__).resolve().parent.parent
-_REPO_ROOT = _BACKEND_ROOT.parent.parent
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent  # backend/app/core/config.py -> backend/
+_REPO_ROOT = _BACKEND_ROOT.parent.parent  # backend/ -> risk_platform/ -> repo root
 
 
 def _default_db_url() -> str:

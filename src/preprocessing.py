@@ -200,3 +200,74 @@ def load_processed() -> tuple[pd.DataFrame, pd.DataFrame]:
     train = pd.read_parquet(TRAIN_FEATS)
     test  = pd.read_parquet(TEST_FEATS)
     return train, test
+
+
+def load_inference_artifacts() -> tuple[
+    IterativeImputer | None,
+    ce.TargetEncoder,
+    OrdinalEncoder,
+]:
+    """Load pickles written by fit_transform_save (impute_numeric=True)."""
+    imputer_path = DATA_PROC / "iterative_imputer.pkl"
+    if not imputer_path.exists():
+        raise FileNotFoundError(
+            f"Missing {imputer_path}. Run fit_transform_save() with impute_numeric=True."
+        )
+    with open(imputer_path, "rb") as f:
+        imputer = pickle.load(f)
+    with open(DATA_PROC / "target_encoder.pkl", "rb") as f:
+        target_enc = pickle.load(f)
+    with open(DATA_PROC / "ordinal_encoder.pkl", "rb") as f:
+        ordinal_enc = pickle.load(f)
+    return imputer, target_enc, ordinal_enc
+
+
+_DATE_COLS_SLASH = ["date_approved", "date_disbursed", "first_payment_due", "maturity_date"]
+
+
+def _ensure_datetime(df: pd.DataFrame) -> pd.DataFrame:
+    """Parse date columns from strings to datetime if they are not already."""
+    df = df.copy()
+    for col in _DATE_COLS_SLASH:
+        if col in df.columns and not pd.api.types.is_datetime64_any_dtype(df[col]):
+            parsed = pd.to_datetime(df[col], format="%d/%m/%Y", errors="coerce")
+            if parsed.isna().all():
+                parsed = pd.to_datetime(df[col], errors="coerce")
+            df[col] = parsed
+    return df
+
+
+def transform_raw_features(
+    df: pd.DataFrame,
+    *,
+    imputer: IterativeImputer | None,
+    target_enc: ce.TargetEncoder,
+    ordinal_enc: OrdinalEncoder,
+    num_medians: pd.Series,
+    impute_numeric: bool = True,
+) -> pd.DataFrame:
+    """
+    Apply the same transform as fit_transform_save (without fitting or saving).
+
+    Parameters
+    ----------
+    df : raw borrower row(s), same schema as load_train()/load_test() (minus Target optional).
+    num_medians : numeric column medians from training (after step 6, before label-encoding strings).
+    """
+    df = df.copy()
+    df = _ensure_datetime(df)
+    df = engineer_all_features(df)
+    df = impute_categoricals(df)
+    df = impute_annual_rate(df)
+    if impute_numeric:
+        if imputer is None:
+            raise ValueError("imputer is required when impute_numeric=True")
+        df = apply_iterative_imputer(df, imputer)
+    df = apply_encoders(df, target_enc, ordinal_enc)
+    df = drop_raw_dates(df)
+
+    med = num_medians.reindex(df.columns)
+    df = df.fillna(med)
+    for col in df.select_dtypes(include="object").columns:
+        df[col] = df[col].fillna("Unknown")
+    return df

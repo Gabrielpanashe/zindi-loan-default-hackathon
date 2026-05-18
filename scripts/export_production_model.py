@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import joblib
+import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
@@ -57,10 +58,11 @@ def main() -> None:
     for col, le in label_encoders.items():
         unk = len(le.classes_)
         s = X[col].astype(str)
-        known = s.isin(le.classes_)
-        arr = pd.Series(np.full(len(s), unk, dtype=np.int32), index=s.index)
-        arr.loc[known] = le.transform(s[known])
-        X[col] = arr
+        known_mask = s.isin(le.classes_).to_numpy()
+        result = np.full(len(s), unk, dtype=np.float32)
+        if known_mask.any():
+            result[known_mask] = le.transform(s[known_mask]).astype(np.float32)
+        X[col] = result
     X = X.astype("float32").to_numpy()
 
     y = train_proc[TARGET_COL].values

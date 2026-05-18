@@ -4,6 +4,8 @@ data/processed/
 
 # Model artifacts (too large for git)
 models/
+risk_platform/artifacts/
+risk_platform/backend/data/
 
 # Python
 __pycache__/
