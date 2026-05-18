@@ -1,0 +1,2 @@
+# Treat notebooks with union merge strategy to reduce conflicts
+*.ipynb merge=union

@@ -1,0 +1,33 @@
+# Data — never commit raw data (share via Google Drive)
+data/raw/*.csv
+data/processed/
+
+# Model artifacts (too large for git)
+models/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+.venv/
+venv/
+*.egg-info/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Optuna study databases
+*.db
+
+# Keep submissions tracked (small CSVs)
+!submissions/*.csv
+!submissions/.gitkeep
