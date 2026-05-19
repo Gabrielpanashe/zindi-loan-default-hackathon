@@ -1,137 +1,189 @@
+/**
+ * ZimbabweRiskMap — Interactive SVG choropleth of Zimbabwe's 10 provinces
+ * coloured by default rate from EDA training data.
+ */
+
 import { useState } from "react";
-import { Badge } from "./ui/Badge";
 
 interface ProvinceData {
-  id: string;
   name: string;
-  rate: number;
-  apps: number;
-  sector: string;
-  path: string;
+  defaultRate: number;       // 0–1  e.g. 0.27 = 27%
+  totalApplications: number;
+  topRiskFactor?: string;
 }
 
-const PROVINCES: ProvinceData[] = [
-  { id: "mash_west",    name: "Mashonaland West",    rate: 24.6, apps: 4567, sector: "Agriculture",    path: "M 10 10 L 205 10 L 205 45 L 215 175 L 130 205 L 10 205 Z" },
-  { id: "mash_central", name: "Mashonaland Central", rate: 22.4, apps: 3750, sector: "Agriculture",    path: "M 205 10 L 315 10 L 315 45 L 300 130 L 270 160 L 215 175 L 205 45 Z" },
-  { id: "mash_east",    name: "Mashonaland East",    rate: 24.7, apps: 4203, sector: "Trade",          path: "M 315 10 L 395 10 L 445 38 L 448 180 L 400 195 L 300 160 L 270 160 L 300 130 L 315 45 Z" },
-  { id: "manicaland",   name: "Manicaland",          rate: 22.8, apps: 4120, sector: "Agriculture",    path: "M 395 10 L 480 10 L 480 285 L 400 265 L 400 195 L 448 180 L 445 38 Z" },
-  { id: "harare",       name: "Harare",              rate: 18.9, apps: 7242, sector: "Government",     path: "M 315 112 L 372 112 L 372 162 L 315 162 Z" },
-  { id: "midlands",     name: "Midlands",            rate: 23.1, apps: 3980, sector: "Mining",         path: "M 130 205 L 215 175 L 300 160 L 400 195 L 400 265 L 300 278 L 130 278 Z" },
-  { id: "mat_north",    name: "Matabeleland North",  rate: 26.3, apps: 3102, sector: "Agriculture",    path: "M 10 205 L 130 205 L 130 278 L 130 345 L 10 345 Z" },
-  { id: "bulawayo",     name: "Bulawayo",            rate: 20.1, apps: 5230, sector: "Trade",          path: "M 80 270 L 130 270 L 130 320 L 80 320 Z" },
-  { id: "masvingo",     name: "Masvingo",            rate: 24.8, apps: 3891, sector: "Agriculture",    path: "M 130 278 L 300 278 L 400 265 L 400 345 L 300 375 L 130 375 L 130 345 Z" },
-  { id: "mat_south",    name: "Matabeleland South",  rate: 28.6, apps: 2847, sector: "Livestock",      path: "M 10 345 L 130 345 L 130 375 L 300 375 L 300 410 L 10 410 Z" },
+interface ZimbabweRiskMapProps {
+  provinceData?: ProvinceData[];
+}
+
+const DEFAULT_PROVINCE_DATA: ProvinceData[] = [
+  { name: "Harare",               defaultRate: 0.189, totalApplications: 7242, topRiskFactor: "Informal sector concentration" },
+  { name: "Bulawayo",             defaultRate: 0.201, totalApplications: 5230, topRiskFactor: "Manufacturing sector decline" },
+  { name: "Manicaland",           defaultRate: 0.228, totalApplications: 4120, topRiskFactor: "Agricultural income volatility" },
+  { name: "Mashonaland Central",  defaultRate: 0.224, totalApplications: 3750, topRiskFactor: "Rural informal economy" },
+  { name: "Mashonaland East",     defaultRate: 0.247, totalApplications: 4203, topRiskFactor: "Mixed agricultural-urban profile" },
+  { name: "Mashonaland West",     defaultRate: 0.246, totalApplications: 4567, topRiskFactor: "Mining sector dependency" },
+  { name: "Masvingo",             defaultRate: 0.248, totalApplications: 3891, topRiskFactor: "Semi-arid agricultural risk" },
+  { name: "Matabeleland North",   defaultRate: 0.263, totalApplications: 3102, topRiskFactor: "Low income density" },
+  { name: "Matabeleland South",   defaultRate: 0.286, totalApplications: 2847, topRiskFactor: "High MFI loan concentration" },
+  { name: "Midlands",             defaultRate: 0.231, totalApplications: 3980, topRiskFactor: "Industrial sector volatility" },
 ];
 
-function riskColor(rate: number): { fill: string; stroke: string } {
-  if (rate >= 25)  return { fill: "#7f1d1d", stroke: "#ef4444" };
-  if (rate >= 22)  return { fill: "#78350f", stroke: "#f59e0b" };
-  return             { fill: "#064e3b", stroke: "#10b981" };
+function getRiskColor(rate: number, opacity = 1): string {
+  if (rate < 0.22)  return `rgba(16,  185, 129, ${opacity})`;  // emerald
+  if (rate < 0.245) return `rgba(245, 158,  11, ${opacity})`;  // amber
+  if (rate < 0.265) return `rgba(251, 146,  60, ${opacity})`;  // orange
+  return                    `rgba(239,  68,  68, ${opacity})`;  // red
 }
 
-function riskTier(rate: number): "high" | "medium" | "low" {
-  return rate >= 25 ? "high" : rate >= 22 ? "medium" : "low";
+function getRiskLabel(rate: number): { label: string; cls: string } {
+  if (rate < 0.22)  return { label: "Lower risk",    cls: "text-emerald-400" };
+  if (rate < 0.245) return { label: "Average risk",  cls: "text-amber-400"   };
+  if (rate < 0.265) return { label: "Elevated risk", cls: "text-orange-400"  };
+  return                    { label: "Higher risk",  cls: "text-red-400"     };
 }
 
-interface Tooltip { x: number; y: number; province: ProvinceData }
+const PROVINCE_SHAPES = [
+  { name: "Harare",              path: "M 310 195 L 335 195 L 335 225 L 310 225 Z",                                                                          labelX: 322, labelY: 212 },
+  { name: "Bulawayo",            path: "M 190 310 L 215 310 L 215 340 L 190 340 Z",                                                                          labelX: 202, labelY: 327 },
+  { name: "Mashonaland West",    path: "M 100 80 L 280 80 L 280 200 L 200 200 L 200 220 L 130 220 L 100 180 Z",                                              labelX: 185, labelY: 145 },
+  { name: "Mashonaland Central", path: "M 280 80 L 400 80 L 420 120 L 400 180 L 335 195 L 310 195 L 280 200 Z",                                              labelX: 355, labelY: 130 },
+  { name: "Mashonaland East",    path: "M 335 195 L 400 180 L 430 200 L 450 260 L 400 280 L 360 260 L 335 225 Z",                                            labelX: 395, labelY: 230 },
+  { name: "Manicaland",          path: "M 400 80 L 480 100 L 490 160 L 480 240 L 450 260 L 430 200 L 420 120 Z",                                             labelX: 450, labelY: 170 },
+  { name: "Midlands",            path: "M 130 220 L 200 220 L 200 200 L 280 200 L 310 195 L 335 225 L 310 260 L 280 290 L 220 300 L 190 310 L 130 300 Z",   labelX: 230, labelY: 260 },
+  { name: "Masvingo",            path: "M 280 290 L 310 260 L 360 260 L 400 280 L 420 340 L 380 390 L 300 390 L 260 360 L 230 320 L 220 300 Z",             labelX: 330, labelY: 335 },
+  { name: "Matabeleland North",  path: "M 100 80 L 100 220 L 130 220 L 130 300 L 100 310 L 60 280 L 60 120 L 80 80 Z",                                      labelX: 82,  labelY: 195 },
+  { name: "Matabeleland South",  path: "M 100 310 L 130 300 L 190 310 L 215 340 L 220 300 L 230 320 L 260 360 L 300 390 L 260 430 L 160 430 L 90 380 L 60 320 L 60 280 Z", labelX: 175, labelY: 385 },
+];
 
-export function ZimbabweMap() {
-  const [selected, setSelected] = useState<string | null>(null);
-  const [tooltip, setTooltip] = useState<Tooltip | null>(null);
+export function ZimbabweMap({ provinceData = DEFAULT_PROVINCE_DATA }: ZimbabweRiskMapProps) {
+  const [hovered, setHovered] = useState<string | null>(null);
+
+  const dataMap = Object.fromEntries(provinceData.map((p) => [p.name, p]));
+  const hoveredData = hovered ? dataMap[hovered] : null;
+  const nationalAvg = provinceData.reduce((s, p) => s + p.defaultRate, 0) / provinceData.length;
 
   return (
-    <div className="relative">
-      <p className="text-xs text-[#8b9cb3] mb-3">
-        Hover a province for details · Colour scale: <span className="text-emerald-400">■ Low</span> · <span className="text-amber-400">■ Medium</span> · <span className="text-red-400">■ High</span> default risk
-      </p>
-
-      <svg
-        viewBox="0 0 490 425"
-        className="w-full max-w-lg mx-auto"
-        style={{ filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.4))" }}
-        onMouseLeave={() => setTooltip(null)}
-      >
-        {PROVINCES.map((p) => {
-          const { fill, stroke } = riskColor(p.rate);
-          const isSelected = selected === p.id;
-          return (
-            <path
-              key={p.id}
-              d={p.path}
-              fill={fill}
-              stroke={isSelected ? "#ffffff" : stroke}
-              strokeWidth={isSelected ? 2.5 : 1.2}
-              opacity={selected && !isSelected ? 0.5 : 1}
-              className="cursor-pointer transition-all duration-150"
-              onClick={() => setSelected(selected === p.id ? null : p.id)}
-              onMouseEnter={(e) => {
-                const svgRect = (e.currentTarget.ownerSVGElement as SVGElement).getBoundingClientRect();
-                const pt = { x: e.clientX - svgRect.left, y: e.clientY - svgRect.top };
-                setTooltip({ x: pt.x, y: pt.y, province: p });
-              }}
-              onMouseMove={(e) => {
-                const svgRect = (e.currentTarget.ownerSVGElement as SVGElement).getBoundingClientRect();
-                setTooltip((t) => t ? { ...t, x: e.clientX - svgRect.left, y: e.clientY - svgRect.top } : null);
-              }}
-            />
-          );
-        })}
-
-        {/* Province name labels */}
-        {PROVINCES.filter((p) => p.id !== "harare" && p.id !== "bulawayo").map((p) => {
-          // Approximate label centres
-          const centres: Record<string, [number, number]> = {
-            mash_west: [95, 105], mash_central: [252, 85], mash_east: [355, 95],
-            manicaland: [438, 145], midlands: [252, 232], mat_north: [65, 272],
-            masvingo: [258, 325], mat_south: [155, 385],
-          };
-          const [cx, cy] = centres[p.id] ?? [0, 0];
-          if (!cx) return null;
-          return (
-            <text key={p.id} x={cx} y={cy} textAnchor="middle" fontSize="9" fill="#e8eef4" opacity="0.85" pointerEvents="none" fontFamily="DM Sans, system-ui">
-              {p.name.split(" ").map((w, i) => (
-                <tspan key={i} x={cx} dy={i === 0 ? 0 : 10}>{w}</tspan>
-              ))}
-            </text>
-          );
-        })}
-
-        {/* Harare label */}
-        <text x="343" y="140" fontSize="8" fill="#e8eef4" opacity="0.9" pointerEvents="none" fontFamily="DM Sans, system-ui">Harare</text>
-        <text x="88" y="298" fontSize="8" fill="#e8eef4" opacity="0.9" pointerEvents="none" fontFamily="DM Sans, system-ui">Bulawayo</text>
-      </svg>
-
-      {/* Tooltip */}
-      {tooltip && (
-        <div
-          className="absolute z-20 bg-[#0f1419] border border-[#3b82f6]/40 rounded-xl px-3 py-2.5 shadow-xl pointer-events-none text-xs min-w-[170px]"
-          style={{ left: tooltip.x + 12, top: tooltip.y - 10 }}
-        >
-          <p className="font-semibold text-[#e8eef4] mb-1.5">{tooltip.province.name}</p>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[#8b9cb3]">Default rate:</span>
-            <Badge variant={riskTier(tooltip.province.rate)} className="text-[10px] px-1.5 py-0">
-              {tooltip.province.rate.toFixed(1)}%
-            </Badge>
-          </div>
-          <p className="text-[#8b9cb3]">Applications: <span className="text-[#e8eef4]">{tooltip.province.apps.toLocaleString()}</span></p>
-          <p className="text-[#8b9cb3]">Top sector: <span className="text-[#e8eef4]">{tooltip.province.sector}</span></p>
+    <div className="bg-[#1a2332] rounded-xl border border-[#243044] p-5">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <h3 className="font-semibold text-[#e8eef4]">Geographic Risk Intelligence</h3>
+          <p className="text-xs text-[#8b9cb3] mt-0.5">Province default rates from 38,932 training loans · Hover for details</p>
         </div>
-      )}
+        <div className="flex items-center gap-3 text-xs text-[#8b9cb3]">
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block" /> &lt;22%</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block" /> 22–24%</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-orange-500 inline-block" /> 24–26%</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block" /> &gt;26%</span>
+        </div>
+      </div>
 
-      {/* Selected province detail */}
-      {selected && (() => {
-        const p = PROVINCES.find((pr) => pr.id === selected)!;
-        return (
-          <div className="mt-3 bg-[#0f1419] border border-[#243044] rounded-xl p-3 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-[#e8eef4]">{p.name}</p>
-              <p className="text-xs text-[#8b9cb3] mt-0.5">Top sector: {p.sector} · {p.apps.toLocaleString()} applications</p>
+      <div className="flex gap-6 flex-wrap">
+        {/* SVG Map */}
+        <div className="shrink-0">
+          <svg viewBox="40 70 460 380" width="360" height="288" className="rounded-lg" style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.4))" }}>
+            {PROVINCE_SHAPES.map((prov) => {
+              const data = dataMap[prov.name];
+              const rate = data?.defaultRate ?? nationalAvg;
+              const isHovered = hovered === prov.name;
+              return (
+                <g
+                  key={prov.name}
+                  onMouseEnter={() => setHovered(prov.name)}
+                  onMouseLeave={() => setHovered(null)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <path
+                    d={prov.path}
+                    fill={getRiskColor(rate, isHovered ? 1 : 0.78)}
+                    stroke={isHovered ? "#ffffff" : "#0f1419"}
+                    strokeWidth={isHovered ? 2 : 0.8}
+                    style={{ transition: "all 0.15s ease" }}
+                  />
+                  <text
+                    x={prov.labelX}
+                    y={prov.labelY}
+                    fontSize="8"
+                    fontFamily="DM Sans, system-ui"
+                    fill="white"
+                    textAnchor="middle"
+                    style={{ pointerEvents: "none", fontWeight: isHovered ? 700 : 400, opacity: 0.92 }}
+                  >
+                    {prov.name.split(" ").map((word, i) => (
+                      <tspan key={i} x={prov.labelX} dy={i === 0 ? 0 : 10}>{word}</tspan>
+                    ))}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+          <p className="text-center text-xs text-[#8b9cb3] mt-1.5">
+            National avg: {(nationalAvg * 100).toFixed(1)}% default rate
+          </p>
+        </div>
+
+        {/* Right panel */}
+        <div className="flex-1 min-w-[180px]">
+          {hoveredData ? (
+            <div className="space-y-3">
+              <div>
+                <p className="font-semibold text-[#e8eef4] text-base">{hoveredData.name}</p>
+                <p className={`text-sm font-medium ${getRiskLabel(hoveredData.defaultRate).cls}`}>
+                  {getRiskLabel(hoveredData.defaultRate).label}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-[#0f1419] border border-[#243044] rounded-lg p-3">
+                  <p className="text-[10px] text-[#8b9cb3] mb-0.5">Default rate</p>
+                  <p className="text-2xl font-bold text-[#e8eef4]">
+                    {(hoveredData.defaultRate * 100).toFixed(1)}%
+                  </p>
+                  <p className="text-[10px] text-[#8b9cb3] mt-0.5">
+                    {hoveredData.defaultRate > nationalAvg
+                      ? `+${((hoveredData.defaultRate - nationalAvg) * 100).toFixed(1)}% above avg`
+                      : `${((hoveredData.defaultRate - nationalAvg) * 100).toFixed(1)}% below avg`}
+                  </p>
+                </div>
+                <div className="bg-[#0f1419] border border-[#243044] rounded-lg p-3">
+                  <p className="text-[10px] text-[#8b9cb3] mb-0.5">Applications</p>
+                  <p className="text-2xl font-bold text-[#e8eef4]">
+                    {hoveredData.totalApplications.toLocaleString()}
+                  </p>
+                  <p className="text-[10px] text-[#8b9cb3] mt-0.5">training loans</p>
+                </div>
+              </div>
+              {hoveredData.topRiskFactor && (
+                <div className="bg-amber-900/20 border border-amber-700/30 rounded-lg p-3">
+                  <p className="text-[10px] font-semibold text-amber-400 mb-1">Top risk driver</p>
+                  <p className="text-xs text-amber-300">{hoveredData.topRiskFactor}</p>
+                </div>
+              )}
             </div>
-            <Badge variant={riskTier(p.rate)}>{p.rate.toFixed(1)}% default</Badge>
-          </div>
-        );
-      })()}
+          ) : (
+            <div className="h-full flex flex-col gap-1.5 justify-center">
+              <p className="text-xs text-[#8b9cb3] mb-1">All provinces (sorted by risk)</p>
+              {[...provinceData]
+                .sort((a, b) => b.defaultRate - a.defaultRate)
+                .map((p) => (
+                  <div
+                    key={p.name}
+                    className="flex items-center gap-2 text-xs px-2 py-1 rounded hover:bg-[#243044] transition-colors cursor-pointer"
+                    onMouseEnter={() => setHovered(p.name)}
+                    onMouseLeave={() => setHovered(null)}
+                  >
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: getRiskColor(p.defaultRate) }} />
+                    <span className="flex-1 text-[#8b9cb3] truncate">{p.name}</span>
+                    <span className="font-semibold text-[#e8eef4]">{(p.defaultRate * 100).toFixed(1)}%</span>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
+
+// Named + default export so either import style works
+export default ZimbabweMap;

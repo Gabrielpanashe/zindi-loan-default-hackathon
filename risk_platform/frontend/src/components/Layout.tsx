@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../auth";
 import { Badge } from "./ui/Badge";
+import { ChatWidget } from "./ChatWidget";
 
 type NavItem = { to: string; label: string; icon: React.ElementType; end?: boolean };
 
@@ -127,6 +128,9 @@ export default function Layout() {
           <Outlet />
         </div>
       </main>
+
+      {/* Global AI assistant — reads score context from sessionStorage if on result screen */}
+      <ChatWidget context={(() => { try { const c = sessionStorage.getItem("chat_context"); return c ? JSON.parse(c) : undefined; } catch { return undefined; } })()} />
     </div>
   );
 }

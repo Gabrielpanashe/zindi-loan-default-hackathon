@@ -9,7 +9,6 @@ import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import ShapChart from "../components/ShapChart";
 import { CreditImprovement } from "../components/CreditImprovement";
-import { ChatWidget } from "../components/ChatWidget";
 import { ExportPdfButton } from "../components/LoanReport";
 import { useOfflineDrafts } from "../hooks/useOfflineDrafts";
 
@@ -171,15 +170,15 @@ export default function Apply() {
           </Button>
         </div>
 
-        {/* Feature 2: Multilingual AI Chat Widget (floating bubble) */}
-        <ChatWidget
-          context={{
-            pd,
-            risk_tier: score.risk_tier,
+        {/* Score context stored in sessionStorage — global ChatWidget in Layout reads it */}
+        {(() => {
+          sessionStorage.setItem("chat_context", JSON.stringify({
+            pd, risk_tier: score.risk_tier,
             recommendation: score.recommendation,
             narratives: score.explanation.narratives ?? [],
-          }}
-        />
+          }));
+          return null;
+        })()}
       </motion.div>
     );
   }

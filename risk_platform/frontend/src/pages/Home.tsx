@@ -5,6 +5,7 @@ import {
   ChevronRight, ArrowRight, TrendingUp, Clock, Award, Sparkles, Globe,
 } from "lucide-react";
 import { GeoRiskTable } from "../components/GeoRiskTable";
+import { ChatWidget } from "../components/ChatWidget";
 
 const STATS = [
   { label: "Loans Analyzed",    value: "38,932", icon: BarChart3, color: "text-blue-400" },
@@ -387,6 +388,9 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* AI Assistant — available on public homepage too */}
+      <ChatWidget />
     </div>
   );
 }
