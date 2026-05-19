@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, ChevronLeft, User, DollarSign, ClipboardCheck, Sparkles, BookmarkPlus } from "lucide-react";
+import { ChevronRight, ChevronLeft, User, DollarSign, ClipboardCheck, Sparkles, BookmarkPlus, Sliders, FilePlus } from "lucide-react";
 import { api } from "../api";
 import type { Score, FriendlyForm } from "../api";
 import { PdGauge } from "../components/PdGauge";
@@ -96,34 +96,64 @@ export default function Apply() {
     const cfg  = REC_CONFIG[rec];
     const pd   = score.probability_default * 100;
     const contribs = score.explanation.top_contributions || [];
+    const pdfForm: FriendlyForm = { applicant_segment: segment, monthly_income_usd: income, amount_usd: amount, term_months: term, employment_sector: sector, loan_purpose: purpose, province, annual_rate_pct: annualRate, existing_obligations: obligations };
+
+    // Save context for global chat widget
+    sessionStorage.setItem("chat_context", JSON.stringify({
+      pd, risk_tier: score.risk_tier,
+      recommendation: score.recommendation,
+      narratives: score.explanation.narratives ?? [],
+    }));
 
     return (
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-5 max-w-2xl">
-        <div>
-          <h1 className="text-2xl font-bold text-[#e8eef4] mb-1">Risk Assessment Result</h1>
-          <p className="text-[#8b9cb3] text-sm">AI-powered credit risk analysis with SHAP explanations.</p>
+
+        {/* ── Sticky action navbar ───────────────────────────────────────── */}
+        <div className="sticky top-0 z-30 -mx-6 px-6 py-3 bg-[#0f1419]/95 backdrop-blur-sm border-b border-[#243044] flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-[#e8eef4]">Risk Assessment Result</span>
+            <Badge variant={tier} className="text-xs">{tier} risk</Badge>
+            <Badge variant={rec}  className="text-xs">{rec.replace("_", " ")}</Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => nav("/simulate")}
+              variant="secondary" size="md"
+              className="flex items-center gap-1.5"
+            >
+              <Sliders size={14} />
+              What-If Simulation
+            </Button>
+            <ExportPdfButton score={score} form={pdfForm} />
+            <Button
+              onClick={() => { setScore(null); setStep(0); }}
+              variant="outline" size="md"
+              className="flex items-center gap-1.5"
+            >
+              <FilePlus size={14} />
+              New Application
+            </Button>
+          </div>
         </div>
 
+        {/* ── Score card ────────────────────────────────────────────────── */}
         <div className="bg-[#1a2332] border border-[#243044] rounded-xl p-6">
           <div className="flex flex-col sm:flex-row items-center gap-8">
             <PdGauge value={pd} size="lg" />
             <div className="flex-1 space-y-4">
-              <div className="flex items-center gap-3 flex-wrap">
-                <Badge variant={tier} className="text-sm px-3 py-1">{tier} risk</Badge>
-                <Badge variant={rec}  className="text-sm px-3 py-1">{rec.replace("_", " ")}</Badge>
-              </div>
               <div className={`border rounded-xl px-4 py-3 text-sm font-medium ${cfg.bg} ${cfg.text}`}>
                 {cfg.msg}
               </div>
               <p className="text-xs text-[#8b9cb3]">
                 Score: <strong className="text-[#e8eef4]">{pd.toFixed(1)}%</strong> probability of default ·
-                Policy thresholds: approve ≤ {((score.policy_snapshot?.approve_pd_max as number ?? 0.3) * 100).toFixed(0)}%,
-                review ≤ {((score.policy_snapshot?.review_pd_max as number ?? 0.6) * 100).toFixed(0)}%
+                Approve ≤ {((score.policy_snapshot?.approve_pd_max as number ?? 0.3) * 100).toFixed(0)}% ·
+                Review ≤ {((score.policy_snapshot?.review_pd_max as number ?? 0.6) * 100).toFixed(0)}%
               </p>
             </div>
           </div>
         </div>
 
+        {/* ── AI Decision Drivers ───────────────────────────────────────── */}
         {(score.explanation.narratives || []).length > 0 && (
           <div className="bg-[#1a2332] border border-[#243044] rounded-xl p-5">
             <div className="flex items-center gap-2 mb-3">
@@ -141,6 +171,7 @@ export default function Apply() {
           </div>
         )}
 
+        {/* ── SHAP chart ────────────────────────────────────────────────── */}
         {contribs.length > 0 && (
           <div className="bg-[#1a2332] border border-[#243044] rounded-xl p-5">
             <h3 className="font-semibold text-[#e8eef4] text-sm mb-4">SHAP Feature Contributions</h3>
@@ -148,37 +179,21 @@ export default function Apply() {
           </div>
         )}
 
-        {/* Feature 1: Credit Improvement — only for reject / manual_review */}
+        {/* ── Credit Improvement — reject / manual_review only ─────────── */}
         {(rec === "reject" || rec === "manual_review") && score.application_id > 0 && (
-          <CreditImprovement
-            applicationId={score.application_id}
-            currentObligations={obligations}
-          />
+          <CreditImprovement applicationId={score.application_id} currentObligations={obligations} />
         )}
 
-        <div className="flex gap-3 flex-wrap items-center">
+        {/* ── Bottom action row (duplicate for easy access after scrolling) */}
+        <div className="flex gap-3 flex-wrap items-center pt-2 pb-6 border-t border-[#243044]">
           <Button onClick={() => nav("/simulate")} variant="secondary" size="lg">
-            Run What-If Simulation <ChevronRight size={15} />
+            <Sliders size={15} /> What-If Simulation
           </Button>
-          {/* Feature 4: PDF Export */}
-          <ExportPdfButton
-            score={score}
-            form={{ applicant_segment: segment, monthly_income_usd: income, amount_usd: amount, term_months: term, employment_sector: sector, loan_purpose: purpose, province, annual_rate_pct: annualRate, existing_obligations: obligations } as FriendlyForm}
-          />
+          <ExportPdfButton score={score} form={pdfForm} />
           <Button onClick={() => { setScore(null); setStep(0); }} variant="ghost" size="lg">
-            New Application
+            <FilePlus size={15} /> New Application
           </Button>
         </div>
-
-        {/* Score context stored in sessionStorage — global ChatWidget in Layout reads it */}
-        {(() => {
-          sessionStorage.setItem("chat_context", JSON.stringify({
-            pd, risk_tier: score.risk_tier,
-            recommendation: score.recommendation,
-            narratives: score.explanation.narratives ?? [],
-          }));
-          return null;
-        })()}
       </motion.div>
     );
   }
