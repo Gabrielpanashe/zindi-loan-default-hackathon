@@ -13,6 +13,7 @@ import { api } from "../api";
 import { useAuth } from "../auth";
 import { KpiCard } from "../components/KpiCard";
 import { GeoRiskTable } from "../components/GeoRiskTable";
+import { ZimbabweMap } from "../components/ZimbabweMap";
 import { Button } from "../components/ui/Button";
 
 const RISK_COLORS: Record<string, string> = {
@@ -180,6 +181,33 @@ function AnalystDashboard({ summary, charts }: { summary: Summary; charts: Chart
   );
 }
 
+// ─── Geographic Risk Section with Map/Table toggle ────────────────────────────
+
+function GeoRiskSection() {
+  const [view, setView] = useState<"map" | "table">("map");
+  return (
+    <div className="bg-[#1a2332] border border-[#243044] rounded-xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <MapPin size={16} className="text-emerald-400" />
+          <h3 className="font-semibold text-[#e8eef4] text-sm">Zimbabwe Geographic Risk Intelligence</h3>
+        </div>
+        <div className="flex rounded-lg overflow-hidden border border-[#3d526b]">
+          {(["map", "table"] as const).map((v) => (
+            <button key={v} onClick={() => setView(v)}
+              className={`px-3 py-1 text-xs font-semibold transition-colors capitalize ${
+                view === v ? "bg-[#3b82f6] text-white" : "bg-transparent text-[#8b9cb3] hover:text-[#e8eef4]"
+              }`}>
+              {v === "map" ? "🗺 Map" : "📋 Table"}
+            </button>
+          ))}
+        </div>
+      </div>
+      {view === "map" ? <ZimbabweMap /> : <GeoRiskTable />}
+    </div>
+  );
+}
+
 // ─── Admin / Executive Dashboard ─────────────────────────────────────────────
 
 function AdminDashboard({ summary, charts }: { summary: Summary; charts: Charts }) {
@@ -257,14 +285,8 @@ function AdminDashboard({ summary, charts }: { summary: Summary; charts: Charts 
         </div>
       </div>
 
-      {/* Geographic risk */}
-      <div className="bg-[#1a2332] border border-[#243044] rounded-xl p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <MapPin size={16} className="text-emerald-400" />
-          <h3 className="font-semibold text-[#e8eef4] text-sm">Zimbabwe Geographic Risk Intelligence</h3>
-        </div>
-        <GeoRiskTable />
-      </div>
+      {/* Geographic risk — Map + Table tabs */}
+      <GeoRiskSection />
 
       {/* System health */}
       <div className="bg-[#1a2332] border border-[#243044] rounded-xl p-5">

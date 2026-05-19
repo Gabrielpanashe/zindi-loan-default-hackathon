@@ -21,6 +21,7 @@ class LoanApplicationOut(BaseModel):
 
 class ScoreOut(BaseModel):
     prediction_id: int
+    application_id: int = 0  # populated by score_application route
     probability_default: float
     recommendation: str
     risk_tier: str

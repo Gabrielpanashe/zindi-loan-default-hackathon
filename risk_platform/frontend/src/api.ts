@@ -35,6 +35,7 @@ export type User = { id: number; email: string; role: string };
 
 export type Score = {
   prediction_id: number;
+  application_id: number;
   probability_default: number;
   recommendation: string;
   risk_tier: string;
@@ -57,3 +58,17 @@ export type FriendlyForm = {
   province?: string;
   annual_rate_pct?: number;
 };
+
+export type ChatMessage = { role: "user" | "assistant"; text: string };
+
+export async function sendChat(
+  message: string,
+  language: "en" | "sn" | "nd",
+  context: { pd: number; risk_tier: string; recommendation: string; narratives: string[] }
+): Promise<string> {
+  const res = await api<{ reply: string }>("/chat", {
+    method: "POST",
+    body: JSON.stringify({ message, language, context }),
+  });
+  return res.reply;
+}

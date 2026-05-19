@@ -177,6 +177,7 @@ def score_application(
 
     return ScoreOut(
         prediction_id=pred.id,
+        application_id=app_row.id,
         probability_default=pd_value,
         recommendation=dec["recommendation"],
         risk_tier=dec["risk_tier"],

@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, ChevronLeft, User, DollarSign, ClipboardCheck, Sparkles } from "lucide-react";
+import { ChevronRight, ChevronLeft, User, DollarSign, ClipboardCheck, Sparkles, BookmarkPlus } from "lucide-react";
 import { api } from "../api";
-import type { Score } from "../api";
+import type { Score, FriendlyForm } from "../api";
 import { PdGauge } from "../components/PdGauge";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import ShapChart from "../components/ShapChart";
+import { CreditImprovement } from "../components/CreditImprovement";
+import { ChatWidget } from "../components/ChatWidget";
+import { ExportPdfButton } from "../components/LoanReport";
+import { useOfflineDrafts } from "../hooks/useOfflineDrafts";
 
 const SEGMENTS = [
   { value: "sme",             label: "SME / Business",    desc: "Small or medium business" },
@@ -44,6 +48,8 @@ export default function Apply() {
   const [score, setScore]       = useState<Score | null>(null);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
+  const [savedDraft, setSavedDraft] = useState(false);
+  const { saveDraft } = useOfflineDrafts();
 
   const [segment, setSegment]       = useState("sme");
   const [province, setProvince]     = useState("Harare");
@@ -143,14 +149,37 @@ export default function Apply() {
           </div>
         )}
 
-        <div className="flex gap-3 flex-wrap">
+        {/* Feature 1: Credit Improvement — only for reject / manual_review */}
+        {(rec === "reject" || rec === "manual_review") && score.application_id > 0 && (
+          <CreditImprovement
+            applicationId={score.application_id}
+            currentObligations={obligations}
+          />
+        )}
+
+        <div className="flex gap-3 flex-wrap items-center">
           <Button onClick={() => nav("/simulate")} variant="secondary" size="lg">
             Run What-If Simulation <ChevronRight size={15} />
           </Button>
+          {/* Feature 4: PDF Export */}
+          <ExportPdfButton
+            score={score}
+            form={{ applicant_segment: segment, monthly_income_usd: income, amount_usd: amount, term_months: term, employment_sector: sector, loan_purpose: purpose, province, annual_rate_pct: annualRate, existing_obligations: obligations } as FriendlyForm}
+          />
           <Button onClick={() => { setScore(null); setStep(0); }} variant="ghost" size="lg">
             New Application
           </Button>
         </div>
+
+        {/* Feature 2: Multilingual AI Chat Widget (floating bubble) */}
+        <ChatWidget
+          context={{
+            pd,
+            risk_tier: score.risk_tier,
+            recommendation: score.recommendation,
+            narratives: score.explanation.narratives ?? [],
+          }}
+        />
       </motion.div>
     );
   }
@@ -275,7 +304,7 @@ export default function Apply() {
               </div>
             </div>
             {error && <p className="text-red-400 text-xs">{error}</p>}
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap">
               <Button variant="secondary" onClick={() => setStep(1)} size="lg"><ChevronLeft size={16} /> Back</Button>
               <Button onClick={submit} disabled={loading} size="lg" className="shadow-lg shadow-blue-500/20">
                 {loading ? (
@@ -284,6 +313,18 @@ export default function Apply() {
                     Analysing with AI…
                   </span>
                 ) : <><Sparkles size={16} /> Get Risk Assessment</>}
+              </Button>
+              {/* Feature 5: Save draft offline */}
+              <Button
+                variant="ghost" size="lg"
+                onClick={() => {
+                  saveDraft({ applicant_segment: segment, monthly_income_usd: income, amount_usd: amount, term_months: term, employment_sector: sector, loan_purpose: purpose, province, annual_rate_pct: annualRate, existing_obligations: obligations });
+                  setSavedDraft(true);
+                  setTimeout(() => setSavedDraft(false), 2500);
+                }}
+              >
+                <BookmarkPlus size={15} />
+                {savedDraft ? "Saved!" : "Save Draft"}
               </Button>
             </div>
           </motion.div>

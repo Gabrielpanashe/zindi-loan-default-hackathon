@@ -11,7 +11,7 @@ if str(ROOT) not in sys.path:
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import applications, audit, auth, batch, dashboard, health, policies, simulations
+from app.api.routes import applications, audit, auth, batch, chat, dashboard, health, policies, simulations
 from app.bootstrap import seed_if_empty
 from app.core.config import get_settings
 from app.db.migrate import run_migrations
@@ -47,6 +47,7 @@ app.include_router(dashboard.router, prefix=API)
 app.include_router(batch.router, prefix=API)
 app.include_router(simulations.router, prefix=API)
 app.include_router(audit.router, prefix=API)
+app.include_router(chat.router, prefix=API)
 app.include_router(health.router, prefix=API)
 
 
