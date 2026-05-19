@@ -1,11 +1,15 @@
 # Data — never commit raw data (share via Google Drive)
 data/raw/*.csv
-data/processed/
 
-# Model artifacts (too large for git)
+# Processed data — exclude large parquets, but keep encoder pickles (needed for inference)
+data/processed/*.parquet
+
+# Model artifacts — classifier is 13MB, safe to commit
 models/
-risk_platform/artifacts/
 risk_platform/backend/data/
+
+# Keep artifacts tracked — needed for Railway/Render deployment (14.6 MB total)
+# !risk_platform/artifacts/  ← intentionally tracked now
 
 # Python
 __pycache__/
