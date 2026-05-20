@@ -30,10 +30,21 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
-_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+
+# Always-allowed origins (hardcoded for reliability on Railway/Vercel)
+_ALWAYS_ALLOW = [
+    "https://zindi-loan-default-hackathon.vercel.app",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+]
+# Merge with any extra origins from the environment variable
+_env_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+_origins = list({*_ALWAYS_ALLOW, *_env_origins})
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_origins or ["http://localhost:5173"],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
