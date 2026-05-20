@@ -27,7 +27,7 @@ const PageTransition = ({ children }: { children: React.ReactNode }) => (
 function Private({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <p className="flex items-center justify-center h-screen text-[#8b9cb3]">Loading…</p>;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/home" replace />;
   if (user.role === "applicant") return <Navigate to="/portal" replace />;
   return <>{children}</>;
 }
@@ -35,7 +35,7 @@ function Private({ children }: { children: React.ReactNode }) {
 function ApplicantOnly({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <p className="flex items-center justify-center h-screen text-[#8b9cb3]">Loading…</p>;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/home" replace />;
   if (user.role !== "applicant") return <Navigate to="/" replace />;
   return <>{children}</>;
 }
