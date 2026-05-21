@@ -24,31 +24,54 @@ def score_dataframe(
 ) -> list[dict[str, Any]]:
     engine = get_inference_engine()
     results: list[dict[str, Any]] = []
-    for idx in range(len(df)):
-        row_df = df.iloc[[idx]]
+
+    if not explain:
+        # Vectorized path: one transform + one model call for all rows
         t0 = time.perf_counter()
-        if explain:
+        proba = engine.predict_proba(df)
+        total_ms = (time.perf_counter() - t0) * 1000
+        per_row_ms = total_ms / max(len(df), 1)
+        for idx, pd_value in enumerate(proba):
+            pd_value = float(pd_value)
+            dec = decision_from_pd(
+                pd_value, approve_pd_max=approve_pd_max, review_pd_max=review_pd_max
+            )
+            row_id = df.iloc[idx].get("ID") if "ID" in df.columns else None
+            results.append(
+                {
+                    "row_index": idx,
+                    "ID": row_id,
+                    "probability_default": pd_value,
+                    "recommendation": dec["recommendation"],
+                    "risk_tier": dec["risk_tier"],
+                    "explanation": {"probability_default": pd_value, "top_contributions": [], "narratives": []},
+                    "latency_ms": per_row_ms,
+                }
+            )
+    else:
+        # Per-row path: needed for SHAP explain (single-row TreeExplainer)
+        for idx in range(len(df)):
+            row_df = df.iloc[[idx]]
+            t0 = time.perf_counter()
             expl = engine.explain(row_df, top_k=top_k)
             pd_value = float(expl["probability_default"])
-        else:
-            pd_value = float(engine.predict_proba(row_df)[0])
-            expl = {"probability_default": pd_value, "top_contributions": [], "narratives": []}
-        latency_ms = (time.perf_counter() - t0) * 1000
-        dec = decision_from_pd(
-            pd_value, approve_pd_max=approve_pd_max, review_pd_max=review_pd_max
-        )
-        row_id = df.iloc[idx].get("ID") if "ID" in df.columns else None
-        results.append(
-            {
-                "row_index": idx,
-                "ID": row_id,
-                "probability_default": pd_value,
-                "recommendation": dec["recommendation"],
-                "risk_tier": dec["risk_tier"],
-                "explanation": expl,
-                "latency_ms": latency_ms,
-            }
-        )
+            latency_ms = (time.perf_counter() - t0) * 1000
+            dec = decision_from_pd(
+                pd_value, approve_pd_max=approve_pd_max, review_pd_max=review_pd_max
+            )
+            row_id = df.iloc[idx].get("ID") if "ID" in df.columns else None
+            results.append(
+                {
+                    "row_index": idx,
+                    "ID": row_id,
+                    "probability_default": pd_value,
+                    "recommendation": dec["recommendation"],
+                    "risk_tier": dec["risk_tier"],
+                    "explanation": expl,
+                    "latency_ms": latency_ms,
+                }
+            )
+
     return results
 
 
