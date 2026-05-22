@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, ChevronLeft, User, DollarSign, ClipboardCheck, Sparkles, BookmarkPlus, Sliders, FilePlus } from "lucide-react";
+import { ChevronRight, ChevronLeft, User, DollarSign, ClipboardCheck, Sparkles, BookmarkPlus, Sliders, FilePlus, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { api } from "../api";
 import type { Score, FriendlyForm } from "../api";
 import { PdGauge } from "../components/PdGauge";
-import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import ShapChart from "../components/ShapChart";
 import { CreditImprovement } from "../components/CreditImprovement";
@@ -35,10 +34,35 @@ const STEPS = [
 type Tier = "low" | "medium" | "high";
 type Rec  = "approve" | "manual_review" | "reject";
 
-const REC_CONFIG: Record<Rec, { bg: string; text: string; msg: string }> = {
-  approve:       { bg: "bg-emerald-900/30 border-emerald-600/40", text: "text-emerald-400", msg: "Application is within approval thresholds — recommended for approval." },
-  manual_review: { bg: "bg-amber-900/30 border-amber-600/40",    text: "text-amber-400",   msg: "Application referred for manual review by a loan officer." },
-  reject:        { bg: "bg-red-900/30 border-red-600/40",        text: "text-red-400",     msg: "Application currently outside approval thresholds." },
+const REC_CONFIG: Record<Rec, {
+  verdict: string; icon: React.ElementType;
+  bannerBg: string; bannerBorder: string; bannerText: string;
+  msg: string;
+}> = {
+  approve: {
+    verdict: "APPROVED",
+    icon: CheckCircle2,
+    bannerBg: "bg-emerald-900/40",
+    bannerBorder: "border-emerald-500/60",
+    bannerText: "text-emerald-300",
+    msg: "This application meets approval thresholds. Recommended for disbursement.",
+  },
+  manual_review: {
+    verdict: "MANUAL REVIEW",
+    icon: AlertTriangle,
+    bannerBg: "bg-amber-900/40",
+    bannerBorder: "border-amber-500/60",
+    bannerText: "text-amber-300",
+    msg: "Application is borderline. Referred to a loan officer for final decision.",
+  },
+  reject: {
+    verdict: "REJECTED",
+    icon: XCircle,
+    bannerBg: "bg-red-900/40",
+    bannerBorder: "border-red-500/60",
+    bannerText: "text-red-300",
+    msg: "Application falls outside current approval thresholds. See improvement tips below.",
+  },
 };
 
 export default function Apply() {
@@ -105,50 +129,61 @@ export default function Apply() {
       narratives: score.explanation.narratives ?? [],
     }));
 
+    const VerdictIcon = cfg.icon;
+    const approveMax = ((score.policy_snapshot?.approve_pd_max as number ?? 0.3) * 100).toFixed(0);
+    const reviewMax  = ((score.policy_snapshot?.review_pd_max  as number ?? 0.6) * 100).toFixed(0);
+
     return (
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-5 max-w-2xl">
 
         {/* ── Sticky action navbar ───────────────────────────────────────── */}
         <div className="sticky top-0 z-30 -mx-6 px-6 py-3 bg-[#0f1419]/95 backdrop-blur-sm border-b border-[#243044] flex items-center justify-between gap-3 flex-wrap">
+          <span className="text-sm font-semibold text-[#e8eef4]">Risk Assessment Result</span>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-[#e8eef4]">Risk Assessment Result</span>
-            <Badge variant={tier} className="text-xs">{tier} risk</Badge>
-            <Badge variant={rec}  className="text-xs">{rec.replace("_", " ")}</Badge>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={() => nav("/simulate")}
-              variant="secondary" size="md"
-              className="flex items-center gap-1.5"
-            >
-              <Sliders size={14} />
-              What-If Simulation
+            <Button onClick={() => nav("/simulate")} variant="secondary" size="md">
+              <Sliders size={14} /> What-If
             </Button>
             <ExportPdfButton score={score} form={pdfForm} />
-            <Button
-              onClick={() => { setScore(null); setStep(0); }}
-              variant="outline" size="md"
-              className="flex items-center gap-1.5"
-            >
-              <FilePlus size={14} />
-              New Application
+            <Button onClick={() => { setScore(null); setStep(0); }} variant="outline" size="md">
+              <FilePlus size={14} /> New
             </Button>
           </div>
         </div>
 
-        {/* ── Score card ────────────────────────────────────────────────── */}
-        <div className="bg-[#1a2332] border border-[#243044] rounded-xl p-6">
-          <div className="flex flex-col sm:flex-row items-center gap-8">
+        {/* ── FINAL DECISION BANNER ─────────────────────────────────────── */}
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+          className={`border-2 rounded-2xl p-6 text-center ${cfg.bannerBg} ${cfg.bannerBorder}`}
+        >
+          <VerdictIcon size={48} className={`mx-auto mb-3 ${cfg.bannerText}`} />
+          <div className={`text-4xl font-black tracking-widest mb-2 ${cfg.bannerText}`}>
+            {cfg.verdict}
+          </div>
+          <p className="text-sm text-[#8b9cb3] max-w-md mx-auto">{cfg.msg}</p>
+        </motion.div>
+
+        {/* ── Summary info strip ────────────────────────────────────────── */}
+        <div className="bg-[#1a2332] border border-[#243044] rounded-xl p-5">
+          <div className="flex flex-col sm:flex-row items-center gap-6">
             <PdGauge value={pd} size="lg" />
-            <div className="flex-1 space-y-4">
-              <div className={`border rounded-xl px-4 py-3 text-sm font-medium ${cfg.bg} ${cfg.text}`}>
-                {cfg.msg}
-              </div>
-              <p className="text-xs text-[#8b9cb3]">
-                Score: <strong className="text-[#e8eef4]">{pd.toFixed(1)}%</strong> probability of default ·
-                Approve ≤ {((score.policy_snapshot?.approve_pd_max as number ?? 0.3) * 100).toFixed(0)}% ·
-                Review ≤ {((score.policy_snapshot?.review_pd_max as number ?? 0.6) * 100).toFixed(0)}%
-              </p>
+            <div className="flex-1 grid grid-cols-2 gap-x-8 gap-y-3 w-full">
+              {[
+                ["Default Probability", `${pd.toFixed(1)}%`],
+                ["Risk Tier",           tier.toUpperCase()],
+                ["Loan Amount",         `$${amount.toLocaleString()}`],
+                ["Monthly Income",      `$${income.toLocaleString()}`],
+                ["Term",                `${term} months`],
+                ["Obligations",         String(obligations)],
+                ["Approve threshold",   `≤ ${approveMax}% PD`],
+                ["Review threshold",    `≤ ${reviewMax}% PD`],
+              ].map(([k, v]) => (
+                <div key={k} className="flex justify-between border-b border-[#243044]/50 pb-2">
+                  <span className="text-xs text-[#8b9cb3]">{k}</span>
+                  <span className="text-xs font-semibold text-[#e8eef4]">{v}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
