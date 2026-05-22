@@ -43,7 +43,6 @@ def upload_batch(
     db.commit()
 
     process_batch_job.delay(job.id)
-    db.refresh(job)  # pick up status/summary written by eager task
     return job
 
 

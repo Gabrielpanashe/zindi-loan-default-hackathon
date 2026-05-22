@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Upload, Download, CheckCircle, AlertCircle, Clock, FileText } from "lucide-react";
-import { api, getToken } from "../api";
+import { api, API, getToken } from "../api";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 
@@ -20,11 +20,27 @@ type Job = {
 };
 
 const STATUS_CONFIG: Record<string, { icon: React.ElementType; color: string; label: string }> = {
-  pending:   { icon: Clock,         color: "text-[#8b9cb3]", label: "Pending" },
-  running:   { icon: Clock,         color: "text-amber-400", label: "Processing" },
+  pending:   { icon: Clock,         color: "text-amber-400",   label: "Scoring…" },
+  running:   { icon: Clock,         color: "text-amber-400",   label: "Scoring…" },
   completed: { icon: CheckCircle,   color: "text-emerald-400", label: "Completed" },
-  failed:    { icon: AlertCircle,   color: "text-red-400", label: "Failed" },
+  failed:    { icon: AlertCircle,   color: "text-red-400",     label: "Failed" },
 };
+
+const SAMPLE_CSV = `ID,age,gender,loan_amount,monthly_income,province,employment_sector,loan_purpose,term_months,existing_obligations,employment_type,months_at_employer,annual_rate_pct
+ZW-TEST-001,34,M,2000,800,Harare,Agriculture,Business,24,1,Formal,18,22.5
+ZW-TEST-002,27,F,1500,600,Bulawayo,Retail,Education,12,0,Informal,6,24.0
+ZW-TEST-003,45,M,5000,1200,Manicaland,Manufacturing,Home Improvement,36,2,Formal,60,20.0
+`;
+
+function downloadSampleCsv() {
+  const blob = new Blob([SAMPLE_CSV], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "batch_sample_template.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function Batch() {
   const [jobs, setJobs]     = useState<Job[]>([]);
@@ -38,7 +54,7 @@ export default function Batch() {
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 4000);
+    const t = setInterval(load, 2000);
     return () => clearInterval(t);
   }, []);
 
@@ -50,7 +66,7 @@ export default function Batch() {
     fd.append("file", file);
     try {
       const token = getToken();
-      const res = await fetch("/api/v1/batches", {
+      const res = await fetch(`${API}/batches`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: fd,
@@ -67,7 +83,7 @@ export default function Batch() {
 
   const download = async (id: number) => {
     const token = getToken();
-    const res = await fetch(`/api/v1/batches/${id}/download`, {
+    const res = await fetch(`${API}/batches/${id}/download`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (!res.ok) return;
@@ -90,9 +106,14 @@ export default function Batch() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div>
-        <h1 className="text-2xl font-bold text-[#e8eef4] mb-1">Batch Loan Scoring</h1>
-        <p className="text-[#8b9cb3] text-sm">Upload a CSV of loan applications. Results are scored asynchronously and available for download.</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-[#e8eef4] mb-1">Batch Loan Scoring</h1>
+          <p className="text-[#8b9cb3] text-sm">Upload a CSV of loan applications. Results are scored instantly and available for download.</p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={downloadSampleCsv} className="shrink-0">
+          <Download size={14} /> Sample CSV
+        </Button>
       </div>
 
       {/* Upload zone */}

@@ -1,6 +1,6 @@
 // In development: Vite proxy forwards /api → localhost:8000 (vite.config.ts)
 // In production (Railway/Render): VITE_API_URL = https://your-api.up.railway.app
-const API = import.meta.env.VITE_API_URL
+export const API = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api/v1`
   : "/api/v1";
 

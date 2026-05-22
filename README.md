@@ -3,7 +3,7 @@
 
 > **AI-powered loan default prediction with explainability, multilingual chat, and a full risk management dashboard — built for Zimbabwe's financial inclusion ecosystem.**
 
-**Team:** Panashe Chandiwana (Lead)  
+**Team:** Spacious_zim ....Panashe(Lead), Shallin and Fadziso  
 **Zindi Best AUC:** 0.67680 (LightGBM ensemble, 56 engineered features)  
 **Live Demo:** https://zindi-loan-default-hackathon.vercel.app  
 
